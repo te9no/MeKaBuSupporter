@@ -28,11 +28,45 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // デバッグログ
+    console.log('Function called:', {
+      method: event.httpMethod,
+      body: event.body,
+      hasSecretKey: !!process.env.MEKBU_SECRET_KEY,
+      secretKeyLength: process.env.MEKBU_SECRET_KEY ? process.env.MEKBU_SECRET_KEY.length : 0
+    });
+
     // リクエストボディの解析
-    const { username, orderNumber } = JSON.parse(event.body);
+    if (!event.body) {
+      console.error('Request body is empty');
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'リクエストボディが空です' 
+        })
+      };
+    }
+
+    let requestData;
+    try {
+      requestData = JSON.parse(event.body);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'JSONの解析に失敗しました: ' + parseError.message 
+        })
+      };
+    }
+
+    const { username, orderNumber } = requestData;
 
     // 入力値検証
     if (!username || !orderNumber) {
+      console.log('Missing required fields:', { username: !!username, orderNumber: !!orderNumber });
       return {
         statusCode: 400,
         headers,
@@ -47,6 +81,7 @@ exports.handler = async (event, context) => {
     const cleanOrderNumber = String(orderNumber).trim();
 
     if (cleanUsername.length === 0 || cleanOrderNumber.length === 0) {
+      console.log('Empty values after trim:', { cleanUsername, cleanOrderNumber });
       return {
         statusCode: 400,
         headers,
@@ -64,10 +99,12 @@ exports.handler = async (event, context) => {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
-          error: 'サーバー設定エラー' 
+          error: 'サーバー設定エラー: シークレットキーが設定されていません' 
         })
       };
     }
+
+    console.log('Secret key found, length:', secretKey.length);
 
     // 購入データを構築（Python側と同じ形式）
     const purchaseData = {
@@ -80,6 +117,7 @@ exports.handler = async (event, context) => {
 
     // JSON文字列化（Python側と同じ順序）
     const dataString = JSON.stringify(purchaseData);
+    console.log('Data string:', dataString);
     
     // シークレットキーを追加したデータでハッシュ生成
     const dataWithSecret = dataString + secretKey;
@@ -89,6 +127,8 @@ exports.handler = async (event, context) => {
     hash.update(dataWithSecret, 'utf8');
     const hashHex = hash.digest('hex');
     const serialNumber = hashHex.substring(0, 12).toUpperCase();
+
+    console.log('Generated serial number:', serialNumber);
 
     // レスポンス
     return {
@@ -108,7 +148,8 @@ exports.handler = async (event, context) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        error: 'シリアルナンバーの生成に失敗しました' 
+        error: 'シリアルナンバーの生成に失敗しました',
+        details: error.message
       })
     };
   }

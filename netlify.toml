@@ -1,3 +1,19 @@
 [build]
-  command = "mkdir ./dist"
-  functions = ".netlify/functions"
+  functions = "netlify/functions"
+  publish = "."
+
+[build.environment]
+  # Node.js version for Functions
+  NODE_VERSION = "18"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "POST, OPTIONS"
+
+# Environment Variables セクション（参考）
+# 実際の設定はNetlify管理画面で行う
+# [context.production.environment]
+#   MEKBU_SECRET_KEY = "your-secret-key-here"
