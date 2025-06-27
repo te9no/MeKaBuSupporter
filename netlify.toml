@@ -1,5 +1,5 @@
 [build]
-  functions = "netlify/functions"
+  functions = ".netlify/functions"
   publish = "."
 
 [build.environment]
@@ -12,8 +12,3 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "POST, OPTIONS"
-
-# Environment Variables セクション（参考）
-# 実際の設定はNetlify管理画面で行う
-# [context.production.environment]
-#   MEKBU_SECRET_KEY = "your-secret-key-here"
