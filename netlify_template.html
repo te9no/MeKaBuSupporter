@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeKaBu シリアルナンバー生成システム</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8fffe;
+            border: 2px solid #d4edda;
+            border-radius: 10px;
+            display: none;
+        }
+        .serial-number {
+            font-family: 'Courier New', monospace;
+            font-size: 20px;
+            font-weight: bold;
+            color: #155724;
+            word-break: break-all;
+            text-align: center;
+            padding: 15px;
+            background: #e9f7ef;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .error {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 MeKaBu認証コード生成</h1>
+            <p>Discord上での購入完了後、以下の情報を入力してシリアルナンバーを生成してください。</p>
+        </div>
+        
+        <form id="serialForm">
+            <div class="form-group">
+                <label for="username">ユーザー名 <span style="color: red;">*</span></label>
+                <input type="text" id="username" placeholder="Discord上のユーザー名を入力" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="orderNumber">注文番号 <span style="color: red;">*</span></label>
+                <input type="text" id="orderNumber" placeholder="DMで通知された注文番号を入力" required>
+            </div>
+            
+            <button type="submit">🎯 シリアルナンバー生成</button>
+        </form>
+        
+        <div id="result" class="result">
+            <h3>✅ シリアルナンバー生成完了</h3>
+            <p><strong>あなたの認証コード:</strong></p>
+            <div class="serial-number" id="serialNumber"></div>
+            <p><strong>⚠️ 重要事項:</strong></p>
+            <ul>
+                <li>このシリアルナンバーは問い合わせ時に必要です</li>
+                <li>第三者に教えないでください</li>
+                <li>スクリーンショットを保存することをお勧めします</li>
+            </ul>
+        </div>
+        
+        <div id="error" class="error"></div>
+    </div>
+
+    <script>
+        document.getElementById('serialForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const orderNumber = document.getElementById('orderNumber').value.trim();
+            
+            // エラー表示をクリア
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('result').style.display = 'none';
+            
+            if (!username || !orderNumber) {
+                showError('すべての項目を入力してください');
+                return;
+            }
+            
+            try {
+                // データを構造化（Python側と同じ形式）
+                const purchaseData = {
+                    username: username,
+                    orderNumber: orderNumber,
+                    timestamp: 1735275600000,  // 固定タイムスタンプ
+                    product: 'MeKaBu',
+                    version: '1.0'
+                };
+                
+                // JSON文字列化（Python側と同じ順序）
+                const dataString = JSON.stringify(purchaseData);
+                
+                // SHA-256ハッシュ生成
+                const dataBytes = new TextEncoder().encode(dataString);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', dataBytes);
+                const hashArray = new Uint8Array(hashBuffer);
+                const hashHex = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
+                const serialNumber = hashHex.substring(0, 12).toUpperCase();
+                
+                // 結果表示
+                document.getElementById('serialNumber').textContent = serialNumber;
+                document.getElementById('result').style.display = 'block';
+                
+                // 結果までスクロール
+                document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                showError('エラーが発生しました: ' + error.message);
+            }
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            errorDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
