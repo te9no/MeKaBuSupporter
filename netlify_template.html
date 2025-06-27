@@ -145,34 +145,48 @@
             }
             
             try {
-                // データを構造化（Python側と同じ形式）
-                const purchaseData = {
-                    username: username,
-                    orderNumber: orderNumber,
-                    timestamp: 1735275600000,  // 固定タイムスタンプ
-                    product: 'MeKaBu',
-                    version: '1.0'
-                };
+                // ローディング表示
+                const submitButton = document.querySelector('button[type="submit"]');
+                const originalText = submitButton.textContent;
+                submitButton.textContent = '生成中...';
+                submitButton.disabled = true;
                 
-                // JSON文字列化（Python側と同じ順序）
-                const dataString = JSON.stringify(purchaseData);
+                // Netlify Functions API を呼び出し
+                const response = await fetch('/.netlify/functions/generate-serial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        orderNumber: orderNumber
+                    })
+                });
                 
-                // SHA-256ハッシュ生成
-                const dataBytes = new TextEncoder().encode(dataString);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', dataBytes);
-                const hashArray = new Uint8Array(hashBuffer);
-                const hashHex = Array.from(hashArray).map(b => b.toString(16).padStart(2, '0')).join('');
-                const serialNumber = hashHex.substring(0, 12).toUpperCase();
+                const data = await response.json();
                 
-                // 結果表示
-                document.getElementById('serialNumber').textContent = serialNumber;
-                document.getElementById('result').style.display = 'block';
+                // ボタンを元に戻す
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
                 
-                // 結果までスクロール
-                document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+                if (response.ok && data.success) {
+                    // 結果表示
+                    document.getElementById('serialNumber').textContent = data.serialNumber;
+                    document.getElementById('result').style.display = 'block';
+                    
+                    // 結果までスクロール
+                    document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    showError(data.error || 'シリアルナンバーの生成に失敗しました');
+                }
                 
             } catch (error) {
-                showError('エラーが発生しました: ' + error.message);
+                // ボタンを元に戻す
+                const submitButton = document.querySelector('button[type="submit"]');
+                submitButton.textContent = '🎯 シリアルナンバー生成';
+                submitButton.disabled = false;
+                
+                showError('ネットワークエラーが発生しました: ' + error.message);
             }
         });
         
