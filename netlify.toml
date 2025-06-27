@@ -1,0 +1,3 @@
+[build]
+  command = "mkdir ./dist"
+  functions = "netlify/functions"
